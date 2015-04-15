@@ -11,34 +11,38 @@ from StringIO import StringIO
 import credentials
 from PIL import Image
 
+BUCKET = 'ocr-test-pics'
+BUCKET_CROPPED = 'ocr-test-pics-cropped'
+
 
 class Picture():
 
     pic = Image
     cropped = Image
-    reading_id = ''
+    image_id = ''
     storage_api = None
+    public_url = ''
 
-    def __init__(self, reading_id):
+    def __init__(self, image_id):
         """
-        Image object constructor. Gets the reading from the Cloudstore, also creates the object to interact with the
+        Image object constructor. Gets the image from the Cloud Store, also creates the object to interact with the
         storage_api.
-            :param: reading_id: the URLsafe Datastore identifier of the reading provided by the user
-            :return: Image from the reading
+            :param: image_id: the URLsafe Cloud Store identifier of the image provided by the user
+            :return: A picture object of the region of interest image from the reading
         """
         http = httplib2.Http()
         c = credentials.get_credentials()
         if c:
             self.storage_api = api_discovery.build('storage', 'v1', http=c.authorize(http))
-            request = self.storage_api.objects().get_media(bucket='ocr-test-pics', object=reading_id)
+            request = self.storage_api.objects().get_media(bucket=BUCKET, object=image_id)
             resp = request.execute()
             self.pic = Image.open(StringIO(resp))
-            self.reading_id = reading_id
-            self.extract_region_of_interest(save=True)
+            self.image_id = image_id
+            self._extract_region_of_interest(save=True)
         else:
             print 'Error getting credentials'
 
-    def extract_region_of_interest(self, save=False):
+    def _extract_region_of_interest(self, save=False):
         """
         Crops self.pic to extract the region of interest.
         Crop size is determined as a function of the image size, type of image (red, green, blue .. see CL photo app)
@@ -58,15 +62,15 @@ class Picture():
 
         # Determine cut size based on type of image
         # cut_size (portionX, portionY)
-        if 'red' in self.reading_id:
+        if 'red' in self.image_id:
             text = 'red'
             cut_size = (self.pic.size[0]*redXpercent, self.pic.size[1]*redYpercent)
-        elif 'blue' in self.reading_id:
+        elif 'blue' in self.image_id:
             text = 'blue'
-            cut_size = (self.pic.size[0]*blueYpercent, self.pic.size[1]*blueXpercent)
-        elif 'green' in self.reading_id:
+            cut_size = (self.pic.size[0]*blueXpercent, self.pic.size[1]*blueYpercent)
+        elif 'green' in self.image_id:
             text = 'green'
-            cut_size = (self.pic.size[0]*greenYpercent, self.pic.size[1]*greenXpercent)
+            cut_size = (self.pic.size[0]*greenXpercent, self.pic.size[1]*greenYpercent)
         else:
             text = 'production'
             cut_size = (self.pic.size[0]*redXpercent, self.pic.size[1]*redYpercent)
@@ -84,24 +88,28 @@ class Picture():
         if save:
             try:
                 # Save temp file
-                self.cropped.save('/home/Cesar/temp/{0}'.format(self.reading_id))
-                media_body = MediaFileUpload('/home/Cesar/temp/{0}'.format(self.reading_id),
+                self.cropped.save('/home/Cesar/temp/{0}'.format(self.image_id))
+                media_body = MediaFileUpload('/home/Cesar/temp/{0}'.format(self.image_id),
                                              mimetype='image/jpg')
                 body = {
-                    'name': self.reading_id
+                    'name': self.image_id,
+                    # 'predefinedAcl': 'publicRead'
                 }
-                request = self.storage_api.objects().insert(bucket='ocr-test-pics-cropped',
+                request = self.storage_api.objects().insert(bucket=BUCKET_CROPPED,
+                                                            predefinedAcl='publicRead',
                                                             body=body,
                                                             media_body=media_body)
                 resp = request.execute()
+                self.public_url = 'https://{0}.storage.googleapis.com/{1}'.format(BUCKET_CROPPED, self.image_id)
             except errors.HttpError, error:
                 print 'An error occurred: %s' % error
             else:
-                print 'Image [{0}] saved successfully!!'.format(resp['name'])
+                print 'Image [{0}] saved successfully to [{1}]'.format(resp['name'], BUCKET_CROPPED)
+                print 'Cropped Image [{0}] size = {1}'.format(resp['name'], self.cropped.size)
 
-    def get_reading_id(self):
+    def get_public_url(self):
         """
-        Gets the reading_id associated with the picture.
-            :return: reading_id (string)
+        Gets the public_url of the image
+            :return: public_url (string) if image saved to datastore, empty otherwise
         """
-        return self.reading_id
+        return self.public_url

@@ -23,4 +23,5 @@ def get_credentials():
         return oauth2_client.AccessTokenCredentials(d['access_token'], 'my-user-agent/1.0')
     else:
         print r.status_code
+        print r.content
         return False
