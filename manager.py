@@ -39,8 +39,8 @@ def _get_task_from_queue():
 
 while True:
     tasks = _get_task_from_queue()
-    task = tasks[0]
-    if task:
+    if tasks is not None:
+        task = tasks[0]
         print 'Assigning Task: {0}'.format(task['id'])
         w = Worker(task['id'], 'pay-load')
         # spawn a new thread for the new worker to do his thing
