@@ -42,7 +42,8 @@ while True:
     if tasks is not None:
         task = tasks[0]
         print 'Assigning Task: {0}'.format(task['id'])
-        w = Worker(task['id'], 'pay-load')
+        payload = task['payloadBase64'].decode('base64')
+        w = Worker(task['id'], payload)
         # spawn a new thread for the new worker to do his thing
         work_thread = threading.Thread(target=w.do_your_thing)
         work_thread.daemon = True
