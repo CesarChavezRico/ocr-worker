@@ -3,6 +3,7 @@ Class that represents a worker process to get the digits from a picture containi
 """
 __author__ = 'cesar'
 
+import config
 from picture import Picture
 from detection import Detection
 from apiclient.discovery import build
@@ -53,29 +54,27 @@ class Worker():
             reading = ''
             for num in sorted(number, key=lambda n: n.center):
                 reading += str(num.value)
-            print 'Number in image [{0}]: {1}'.format(self.pic.get_public_url(), reading)
+            config.logging.info('Number in image [{0}]: {1}'.format(self.pic.get_public_url(), reading))
             if self._is_int(reading):
                 try:
                     r = self._post_result_to_app_engine(reading)
                     if r:
-                        print 'Result successfully posted to AppEngine!'
+                        config.logging.info('Result successfully posted to AppEngine!')
                 except Exception as e:
                     # TODO: Retry request ..
-                    print 'Can not post result to AppEngine, retry task!'
-                    print e.__str__()
+                    config.logging.error('Error posting to AppEngine: {0}, retry task!'.format(e.__str__()))
             else:
-                print 'The response [{0}] is not an int. Something is wrong!'.format(reading)
+                config.logging.warning('The response [{0}] is not an int. Something is wrong!'.format(reading))
                 try:
                     r = self._notify_error_to_app_engine(reading)
                     if r:
-                        print 'Error successfully notified to AppEngine!'
+                        config.logging.info('Error successfully notified to AppEngine!')
                 except Exception as e:
                     # TODO: Retry request ..
-                    print 'Can not notify error to AppEngine, retry task!'
-                    print e.__str__()
-
+                    config.logging.error('Error posting to AppEngine: {0}, retry task!'.format(e.__str__()))
         else:
-            print(r.status_code)
+            config.logging.error('Error in response from VMXserver: {0}'.format(r.status_code))
+            config.logging.error('Error in response from VMXserver content: {0}'.format(r.content))
 
     def _post_result_to_app_engine(self, result):
         """
@@ -123,7 +122,6 @@ class Worker():
 
         request = backend.reading().set_image_processing_result(body=payload)
         response = request.execute()
-        print '[{0}]'.format(response)
         if response['ok']:
             return True
         else:

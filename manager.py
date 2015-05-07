@@ -1,5 +1,6 @@
 __author__ = 'cesar'
 
+import config
 from apiclient.discovery import build
 import httplib2
 import credentials
@@ -32,16 +33,16 @@ def _get_task_from_queue():
                 return None
 
         else:
-            print 'Error getting credentials'
+            config.logging.error('Error getting credentials')
     except httplib2.ServerNotFoundError as e:
-        print 'error {0}'.format(e.message)
+        config.logging.error('HTTP Error {0}'.format(e.message))
         return None
 
 while True:
     tasks = _get_task_from_queue()
     if tasks is not None:
         task = tasks[0]
-        print 'Assigning Task: {0}'.format(task['id'])
+        config.logging.info('Assigning Task: {0}'.format(task['id']))
         payload = task['payloadBase64'].decode('base64')
         w = Worker(task['id'], payload)
         # spawn a new thread for the new worker to do his thing
@@ -49,5 +50,5 @@ while True:
         work_thread.daemon = True
         work_thread.start()
     else:
-        print 'No tasks available'
+        config.logging.debug('No tasks available')
     time.sleep(POLLING_INTERVAL)

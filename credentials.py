@@ -3,7 +3,7 @@ Class that handles all the requirements for authentication within the same GC pr
 """
 __author__ = 'Cesar'
 
-
+import config
 import requests
 from oauth2client import client as oauth2_client
 
@@ -22,6 +22,6 @@ def get_credentials():
         d = r.json()
         return oauth2_client.AccessTokenCredentials(d['access_token'], 'my-user-agent/1.0')
     else:
-        print r.status_code
-        print r.content
+        config.logging.error('Error in response from server: {0}'.format(r.status_code))
+        config.logging.error('Error in response from server content: {0}'.format(r.content))
         return False

@@ -3,6 +3,7 @@ Class that represents an picture containing the measurement of a sensor
 """
 __author__ = 'Cesar'
 
+import config
 import googleapiclient.discovery as api_discovery
 from googleapiclient.http import MediaFileUpload
 from googleapiclient import errors
@@ -40,7 +41,7 @@ class Picture():
             self.image_id = image_id
             self._extract_region_of_interest(save=True)
         else:
-            print 'Error getting credentials'
+            config.logging.error('Error getting credentials')
 
     def _extract_region_of_interest(self, save=False):
         """
@@ -75,7 +76,7 @@ class Picture():
             text = 'production'
             cut_size = (self.pic.size[0]*redXpercent, self.pic.size[1]*redYpercent)
 
-        print ('Image Size ({1}) = {0}'.format(self.pic.size, text))
+        config.logging.debug('Image Size ({1}) = {0}'.format(self.pic.size, text))
 
         # image_center (centerX, centerY)
         image_center = self.pic.size[0]/2, self.pic.size[1]/2
@@ -102,10 +103,10 @@ class Picture():
                 resp = request.execute()
                 self.public_url = 'https://{0}.storage.googleapis.com/{1}'.format(BUCKET_CROPPED, self.image_id)
             except errors.HttpError, error:
-                print 'An error occurred: %s' % error
+                config.logging.error('HTTP error occurred: {0}'.format(error))
             else:
-                print 'Image [{0}] saved successfully to [{1}]'.format(resp['name'], BUCKET_CROPPED)
-                print 'Cropped Image [{0}] size = {1}'.format(resp['name'], self.cropped.size)
+                config.logging.debug('Image [{0}] saved successfully to [{1}]'.format(resp['name'], BUCKET_CROPPED))
+                config.logging.debug('Cropped Image [{0}] size = {1}'.format(resp['name'], self.cropped.size))
 
     def get_public_url(self):
         """

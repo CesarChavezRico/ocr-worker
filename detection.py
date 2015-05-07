@@ -3,8 +3,7 @@ A class containing the details of a number detection by VMXserver
 """
 __author__ = 'cesar'
 
-MINIMUM_SCORE_FOR_DETECTION = 0.3
-
+import config
 
 class Detection:
     center = ()
@@ -18,7 +17,7 @@ class Detection:
             :param object: JSON response from VMXserver containing the info of a detection candidate
             :return: True all criteria is met, False otherwise
         """
-        if object['score'] > MINIMUM_SCORE_FOR_DETECTION:
+        if object['score'] > config.MINIMUM_SCORE_FOR_DETECTION:
             return True
         else:
             return None
