@@ -9,8 +9,6 @@ import threading
 
 from worker import Worker
 
-POLLING_INTERVAL = 10
-
 
 def _get_task_from_queue():
     """
@@ -51,4 +49,4 @@ while True:
         work_thread.start()
     else:
         config.logging.debug('No tasks available')
-    time.sleep(POLLING_INTERVAL)
+    time.sleep(config.POLLING_INTERVAL)

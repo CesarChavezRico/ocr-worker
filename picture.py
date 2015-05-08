@@ -74,7 +74,7 @@ class Picture():
             cut_size = (self.pic.size[0]*greenXpercent, self.pic.size[1]*greenYpercent)
         else:
             text = 'production'
-            cut_size = (self.pic.size[0]*redXpercent, self.pic.size[1]*redYpercent)
+            cut_size = (self.pic.size[0]*blueXpercent, self.pic.size[1]*blueYpercent)
 
         config.logging.debug('Image Size ({1}) = {0}'.format(self.pic.size, text))
 
