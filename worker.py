@@ -5,12 +5,12 @@ __author__ = 'cesar'
 
 import config
 from picture import Picture
-from detection import Detection
+from detection import Detection, FalseDetectionException
 from apiclient.discovery import build
 import requests
 
 VMX_SERVER = 'http://vmx-server.ddns.net:80'
-MODEL = '560e632c54953b2729ed7c4c951529861b99'
+MODEL = '0c69d0a7b4a3b39d0ba32c8ec67b1f01f5d7'
 
 
 class Worker():
@@ -44,27 +44,72 @@ class Worker():
         end calls _post_result_to_app_engine to notify app engine about the result of the processing.
             :return:
         """
+        reading = ''
         r = requests.get('{0}/process_image?image={1}&model={2}'.format(VMX_SERVER, self.pic.get_public_url(), MODEL))
         if r.status_code == 200:
             number = []
             objects = r.json()['objects']
+
             for o in objects:
-                if Detection.is_detection(o):
-                    number.append(Detection(o))
-            reading = ''
-            for num in sorted(number, key=lambda n: n.center):
-                reading += str(num.value)
-            config.logging.info('Number in image [{0}]: {1}'.format(self.pic.get_public_url(), reading))
-            if self._is_int(reading):
                 try:
-                    r = self._post_result_to_app_engine(reading)
-                    if r:
-                        config.logging.info('Result successfully posted to AppEngine!')
-                except Exception as e:
-                    # TODO: Retry request ..
-                    config.logging.error('Error posting to AppEngine: {0}, retry task!'.format(e.__str__()))
-            else:
-                config.logging.warning('The response [{0}] is not an int. Something is wrong!'.format(reading))
+                    digit = Detection(o)
+                except FalseDetectionException:
+                    pass
+                else:
+                    number.append(digit)
+                    config.logging.debug('Detected: [{0}] with a score of: {1}'.format(digit.value, digit.score))
+            config.logging.debug('End getting digits')
+
+            try:
+                # Get digit with highest score
+                number.sort(key=lambda n: n.score, reverse=True)
+                highest_score = number[0]
+                config.logging.debug('The digit with highest score is: {0}, score {1}'
+                                     .format(highest_score.value, highest_score.score))
+
+                # Get digit size
+                digit_size = highest_score.endX - highest_score.beginX
+                config.logging.debug('Digit size = {0}'.format(digit_size))
+
+                # Sort digits according to location on image to generate the reading
+                count = 0
+                number.sort(key=lambda n: n.center)
+                for num in number:
+                    if count > 0:
+                        pixels_between = num.beginX - number[count-1].endX
+                        config.logging.debug('{0} Pixels between {1} and {2}'.format(pixels_between,
+                                                                                     number[count-1].value,
+                                                                                     num.value))
+                        if pixels_between < digit_size*2:
+                            # Contiguous digits
+                            reading += str(num.value)
+                        else:
+                            # To much pixels between characters we missed one! =(
+                            reading += '_{0}'.format(str(num.value))
+                    else:
+                        config.logging.debug('Starting distance measurement with: {0}'.format(num.value))
+                        reading += str(num.value)
+                    count += 1
+                config.logging.info('Number in image [{0}]: {1}'.format(self.pic.get_public_url(), reading))
+
+                # Check if reading is good and complete
+                if self._is_int(reading):
+                    if len(reading) > 4:
+                        try:
+                            r = self._post_result_to_app_engine(reading)
+                            if r:
+                                config.logging.info('Result successfully posted to AppEngine!')
+                        except Exception as e:
+                            # TODO: Retry request ..
+                            config.logging.error('Error posting to AppEngine: {0}, retry task!'.format(e.__str__()))
+                    else:
+                        # Wrong reading notification (Incomplete)
+                        raise IndexError
+                else:
+                    # Wrong reading notification (Not an Int)
+                    raise IndexError
+            except IndexError:
+                config.logging.warning('The response [{0}] is not valid. Something is wrong!'.format(reading))
                 try:
                     r = self._notify_error_to_app_engine(reading)
                     if r:
@@ -72,6 +117,7 @@ class Worker():
                 except Exception as e:
                     # TODO: Retry request ..
                     config.logging.error('Error posting to AppEngine: {0}, retry task!'.format(e.__str__()))
+
         else:
             config.logging.error('Error in response from VMXserver: {0}'.format(r.status_code))
             config.logging.error('Error in response from VMXserver content: {0}'.format(r.content))
@@ -99,6 +145,7 @@ class Worker():
         if response['ok']:
             return True
         else:
+            config.logging.error('Bad Response from AppEngine: {0}'.format(response))
             raise Exception
 
     def _notify_error_to_app_engine(self, error):
@@ -125,4 +172,5 @@ class Worker():
         if response['ok']:
             return True
         else:
+            config.logging.error('Bad Response from AppEngine: {0}'.format(response))
             raise Exception

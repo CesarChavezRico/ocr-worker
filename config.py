@@ -15,7 +15,7 @@ logging.getLogger("googleapiclient").setLevel(logging.WARNING)
 logging.getLogger("oauth2client").setLevel(logging.WARNING)
 
 # Minimum detection level
-MINIMUM_SCORE_FOR_DETECTION = 0.1
+MINIMUM_SCORE_FOR_DETECTION = -.4
 
 
 # Time between task polling
