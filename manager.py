@@ -2,6 +2,7 @@ __author__ = 'cesar'
 
 import config
 from apiclient.discovery import build
+from apiclient.errors import HttpError
 import httplib2
 import credentials
 import time
@@ -34,6 +35,14 @@ def _get_task_from_queue():
             config.logging.error('Error getting credentials')
     except httplib2.ServerNotFoundError as e:
         config.logging.error('HTTP Error {0}'.format(e.message))
+        return None
+
+    except HttpError as e:
+        config.logging.error('HTTP Error {0}'.format(e.message))
+        return None
+
+    except Exception as e:
+        config.logging.error('Unknown Error {0}'.format(e.message))
         return None
 
 while True:

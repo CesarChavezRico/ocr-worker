@@ -13,7 +13,7 @@ VMX_SERVER = 'http://vmx-server.ddns.net:80'
 MODEL = '0c69d0a7b4a3b39d0ba32c8ec67b1f01f5d7'
 
 
-class Worker():
+class Worker:
 
     pic = Picture
     task_name = ''
@@ -111,7 +111,8 @@ class Worker():
             except IndexError:
                 config.logging.warning('The response [{0}] is not valid. Something is wrong!'.format(reading))
                 try:
-                    r = self._notify_error_to_app_engine(reading)
+                    r = self._notify_error_to_app_engine('Not enough characters recognized, '
+                                                         'successfully recognized: {0}'.format(reading))
                     if r:
                         config.logging.info('Error successfully notified to AppEngine!')
                 except Exception as e:
